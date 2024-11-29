@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Map with Elevation Profile</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        #map { height: 400px; }
+        #chartContainer { height: 300px; }
+    </style>
+</head>
+<body>
+    <h1>Map with Elevation Profile</h1>
+    <div id="map"></div>
+    <canvas id="chartContainer"></canvas>
+
+    <script>
+        // Initialize the map
+        const map = L.map('map').setView([40.7128, -74.0060], 13); // New York City coordinates
+
+        // Add OpenStreetMap basemap
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        // Add a polyline and calculate elevation
+        const polyline = L.polyline([], { color: 'blue' }).addTo(map);
+        const elevationData = [];
+        const apiURL = "https://api.opentopodata.org/v1/eudem25m"; // Example: Open Elevation API
+
+        map.on('click', async function (e) {
+            polyline.addLatLng(e.latlng);
+            
+            const response = await fetch(`${apiURL}?locations=${e.latlng.lat},${e.latlng.lng}`);
+            const data = await response.json();
+            const elevation = data.results[0].elevation;
+
+            elevationData.push(elevation);
+            updateChart(elevationData);
+        });
+
+        // Elevation Profile Chart
+        const ctx = document.getElementById('chartContainer').getContext('2d');
+        const elevationChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Elevation (m)',
+                    data: [],
+                    borderColor: 'blue',
+                    borderWidth: 2,
+                    fill: false,
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    x: { title: { display: true, text: 'Point' } },
+                    y: { title: { display: true, text: 'Elevation (m)' } }
+                }
+            }
+        });
+
+        function updateChart(elevationData) {
+            elevationChart.data.labels = elevationData.map((_, i) => i + 1);
+            elevationChart.data.datasets[0].data = elevationData;
+            elevationChart.update();
+        }
+    </script>
+</body>
+</html>
